@@ -9998,6 +9998,8 @@ tryAgain:
                 var awaitToken = this.EatContextualToken(SyntaxKind.AwaitKeyword);
                 awaitToken = CheckFeatureAvailability(awaitToken, MessageID.IDS_FeatureAsync);
                 var questionToken = this.TryEatToken(SyntaxKind.QuestionToken);
+                if (questionToken != null)
+                    questionToken = CheckFeatureAvailability(questionToken, MessageID.IDS_FeatureConditionalAwait);
                 var operand = this.ParseSubExpression(newPrecedence);
                 leftOperand = _syntaxFactory.AwaitExpression(awaitToken, questionToken, operand);
             }
