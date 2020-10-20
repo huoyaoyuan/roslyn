@@ -772,7 +772,7 @@ assignment_expression
   ;
 
 await_expression
-  : 'await' expression
+  : 'await' '?'? expression
   ;
 
 base_object_creation_expression
