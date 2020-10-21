@@ -1902,7 +1902,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
     internal sealed partial class BoundAwaitExpression : BoundExpression
     {
-        public BoundAwaitExpression(SyntaxNode syntax, BoundExpression expression, BoundAwaitableInfo awaitableInfo, TypeSymbol type, bool hasErrors = false)
+        public BoundAwaitExpression(SyntaxNode syntax, bool isConditional, BoundExpression expression, BoundAwaitableInfo awaitableInfo, TypeSymbol type, bool hasErrors = false)
             : base(BoundKind.AwaitExpression, syntax, type, hasErrors || expression.HasErrors() || awaitableInfo.HasErrors())
         {
 
@@ -1910,6 +1910,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             RoslynDebug.Assert(awaitableInfo is object, "Field 'awaitableInfo' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
             RoslynDebug.Assert(type is object, "Field 'type' cannot be null (make the type nullable in BoundNodes.xml to remove this check)");
 
+            this.IsConditional = isConditional;
             this.Expression = expression;
             this.AwaitableInfo = awaitableInfo;
         }
@@ -1917,17 +1918,19 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public new TypeSymbol Type => base.Type!;
 
+        public bool IsConditional { get; }
+
         public BoundExpression Expression { get; }
 
         public BoundAwaitableInfo AwaitableInfo { get; }
         [DebuggerStepThrough]
         public override BoundNode? Accept(BoundTreeVisitor visitor) => visitor.VisitAwaitExpression(this);
 
-        public BoundAwaitExpression Update(BoundExpression expression, BoundAwaitableInfo awaitableInfo, TypeSymbol type)
+        public BoundAwaitExpression Update(bool isConditional, BoundExpression expression, BoundAwaitableInfo awaitableInfo, TypeSymbol type)
         {
-            if (expression != this.Expression || awaitableInfo != this.AwaitableInfo || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
+            if (isConditional != this.IsConditional || expression != this.Expression || awaitableInfo != this.AwaitableInfo || !TypeSymbol.Equals(type, this.Type, TypeCompareKind.ConsiderEverything))
             {
-                var result = new BoundAwaitExpression(this.Syntax, expression, awaitableInfo, type, this.HasErrors);
+                var result = new BoundAwaitExpression(this.Syntax, isConditional, expression, awaitableInfo, type, this.HasErrors);
                 result.CopyAttributes(this);
                 return result;
             }
@@ -9957,7 +9960,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             BoundExpression expression = (BoundExpression)this.Visit(node.Expression);
             BoundAwaitableInfo awaitableInfo = (BoundAwaitableInfo)this.Visit(node.AwaitableInfo);
             TypeSymbol? type = this.VisitType(node.Type);
-            return node.Update(expression, awaitableInfo, type);
+            return node.Update(node.IsConditional, expression, awaitableInfo, type);
         }
         public override BoundNode? VisitTypeOfOperator(BoundTypeOfOperator node)
         {
@@ -11501,12 +11504,12 @@ namespace Microsoft.CodeAnalysis.CSharp
 
             if (_updatedNullabilities.TryGetValue(node, out (NullabilityInfo Info, TypeSymbol? Type) infoAndType))
             {
-                updatedNode = node.Update(expression, awaitableInfo, infoAndType.Type!);
+                updatedNode = node.Update(node.IsConditional, expression, awaitableInfo, infoAndType.Type!);
                 updatedNode.TopLevelNullability = infoAndType.Info;
             }
             else
             {
-                updatedNode = node.Update(expression, awaitableInfo, node.Type);
+                updatedNode = node.Update(node.IsConditional, expression, awaitableInfo, node.Type);
             }
             return updatedNode;
         }
@@ -13674,6 +13677,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         );
         public override TreeDumperNode VisitAwaitExpression(BoundAwaitExpression node, object? arg) => new TreeDumperNode("awaitExpression", null, new TreeDumperNode[]
         {
+            new TreeDumperNode("isConditional", node.IsConditional, null),
             new TreeDumperNode("expression", null, new TreeDumperNode[] { Visit(node.Expression, null) }),
             new TreeDumperNode("awaitableInfo", null, new TreeDumperNode[] { Visit(node.AwaitableInfo, null) }),
             new TreeDumperNode("type", node.Type, null),

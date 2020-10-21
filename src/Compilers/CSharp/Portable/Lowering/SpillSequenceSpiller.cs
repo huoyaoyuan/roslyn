@@ -565,7 +565,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // the spilling will occur in the enclosing node.
             BoundSpillSequenceBuilder builder = null;
             var expr = VisitExpression(ref builder, node.Expression);
-            return UpdateExpression(builder, node.Update(expr, node.AwaitableInfo, node.Type));
+            return UpdateExpression(builder, node.Update(node.IsConditional, expr, node.AwaitableInfo, node.Type));
         }
 
         public override BoundNode VisitSpillSequence(BoundSpillSequence node)
