@@ -26,11 +26,12 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         private BoundAwaitExpression BindAwait(BoundExpression expression, SyntaxNode node, DiagnosticBag diagnostics)
         {
+            bool isConditional = (node as AwaitExpressionSyntax)?.QuestionToken.Kind() == SyntaxKind.QuestionToken;
             bool hasErrors = false;
             var placeholder = new BoundAwaitableValuePlaceholder(expression.Syntax, GetValEscape(expression, LocalScopeDepth), expression.Type);
 
             ReportBadAwaitDiagnostics(node, node.Location, diagnostics, ref hasErrors);
-            var info = BindAwaitInfo(placeholder, node, diagnostics, ref hasErrors, expressionOpt: expression);
+            var info = BindAwaitInfo(placeholder, node, diagnostics, ref hasErrors, expressionOpt: expression, isConditional: isConditional);
 
             // Spec 7.7.7.2:
             // The expression await t is classified the same way as the expression (t).GetAwaiter().GetResult(). Thus,
@@ -38,7 +39,7 @@ namespace Microsoft.CodeAnalysis.CSharp
             // non-void return type T, the await-expression is classified as a value of type T.
             TypeSymbol awaitExpressionType = info.GetResult?.ReturnType ?? (hasErrors ? CreateErrorType() : Compilation.DynamicType);
 
-            return new BoundAwaitExpression(node, false, expression, info, awaitExpressionType, hasErrors);
+            return new BoundAwaitExpression(node, isConditional, expression, info, awaitExpressionType, hasErrors);
         }
 
         internal void ReportBadAwaitDiagnostics(SyntaxNode node, Location location, DiagnosticBag diagnostics, ref bool hasErrors)
@@ -47,11 +48,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             hasErrors |= ReportBadAwaitContext(node, location, diagnostics);
         }
 
-        internal BoundAwaitableInfo BindAwaitInfo(BoundAwaitableValuePlaceholder placeholder, SyntaxNode node, DiagnosticBag diagnostics, ref bool hasErrors, BoundExpression? expressionOpt = null)
+        internal BoundAwaitableInfo BindAwaitInfo(BoundAwaitableValuePlaceholder placeholder, SyntaxNode node, DiagnosticBag diagnostics, ref bool hasErrors, BoundExpression? expressionOpt = null, bool isConditional = false)
         {
             bool hasGetAwaitableErrors = !GetAwaitableExpressionInfo(
                 expressionOpt ?? placeholder,
                 placeholder,
+                isConditional,
                 out bool isDynamic,
                 out BoundExpression? getAwaiter,
                 out PropertySymbol? isCompleted,
@@ -237,12 +239,13 @@ namespace Microsoft.CodeAnalysis.CSharp
             SyntaxNode node,
             DiagnosticBag diagnostics)
         {
-            return GetAwaitableExpressionInfo(expression, expression, out _, out _, out _, out _, out getAwaiterGetResultCall, node, diagnostics);
+            return GetAwaitableExpressionInfo(expression, expression, false, out _, out _, out _, out _, out getAwaiterGetResultCall, node, diagnostics);
         }
 
         private bool GetAwaitableExpressionInfo(
             BoundExpression expression,
             BoundExpression getAwaiterArgument,
+            bool isConditional,
             out bool isDynamic,
             out BoundExpression? getAwaiter,
             out PropertySymbol? isCompleted,
@@ -251,7 +254,8 @@ namespace Microsoft.CodeAnalysis.CSharp
             SyntaxNode node,
             DiagnosticBag diagnostics)
         {
-            Debug.Assert(TypeSymbol.Equals(expression.Type, getAwaiterArgument.Type, TypeCompareKind.ConsiderEverything));
+            Debug.Assert(TypeSymbol.Equals(expression.Type, getAwaiterArgument.Type, TypeCompareKind.ConsiderEverything)
+                || TypeSymbol.Equals(expression.Type?.GetNullableUnderlyingType(), getAwaiterArgument.Type, TypeCompareKind.ConsiderEverything));
 
             isDynamic = false;
             getAwaiter = null;
@@ -270,7 +274,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return true;
             }
 
-            if (!GetGetAwaiterMethod(getAwaiterArgument, node, diagnostics, out getAwaiter))
+            if (!GetGetAwaiterMethod(getAwaiterArgument, node, isConditional, diagnostics, out getAwaiter))
             {
                 return false;
             }
@@ -312,7 +316,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// NOTE: this is an error in the spec.  An extension method of the form
         /// Awaiter&lt;T&gt; GetAwaiter&lt;T&gt;(this Task&lt;T&gt;) may be used.
         /// </remarks>
-        private bool GetGetAwaiterMethod(BoundExpression expression, SyntaxNode node, DiagnosticBag diagnostics, [NotNullWhen(true)] out BoundExpression? getAwaiterCall)
+        private bool GetGetAwaiterMethod(BoundExpression expression, SyntaxNode node, bool isConditional, DiagnosticBag diagnostics, [NotNullWhen(true)] out BoundExpression? getAwaiterCall)
         {
             RoslynDebug.Assert(expression.Type is object);
             if (expression.Type.IsVoidType())
@@ -322,7 +326,20 @@ namespace Microsoft.CodeAnalysis.CSharp
                 return false;
             }
 
-            getAwaiterCall = MakeInvocationExpression(node, expression, WellKnownMemberNames.GetAwaiter, ImmutableArray<BoundExpression>.Empty, diagnostics);
+            var nonNullExpression = expression;
+            if (isConditional && nonNullExpression.Type?.IsValueType == true)
+            {
+                if (nonNullExpression.Type.IsNullableType())
+                {
+                    nonNullExpression = MakeInvocationExpression(node, nonNullExpression, nameof(System.Nullable<int>.GetValueOrDefault), ImmutableArray<BoundExpression>.Empty, diagnostics);
+                }
+                else
+                {
+                    Error(diagnostics, ErrorCode.ERR_BadUnaryOp, node, "await?", nonNullExpression.Type);
+                }
+            }
+
+            getAwaiterCall = MakeInvocationExpression(node, nonNullExpression, WellKnownMemberNames.GetAwaiter, ImmutableArray<BoundExpression>.Empty, diagnostics);
             if (getAwaiterCall.HasAnyErrors) // && !expression.HasAnyErrors?
             {
                 getAwaiterCall = null;
