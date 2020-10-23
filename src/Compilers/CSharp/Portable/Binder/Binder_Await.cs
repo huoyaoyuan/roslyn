@@ -39,6 +39,12 @@ namespace Microsoft.CodeAnalysis.CSharp
             // non-void return type T, the await-expression is classified as a value of type T.
             TypeSymbol awaitExpressionType = info.GetResult?.ReturnType ?? (hasErrors ? CreateErrorType() : Compilation.DynamicType);
 
+            // The same as BindConditionalAccessExpression
+            if (isConditional && awaitExpressionType.IsValueType && !awaitExpressionType.IsNullableType() && !awaitExpressionType.IsVoidType())
+            {
+                awaitExpressionType = GetSpecialType(SpecialType.System_Nullable_T, diagnostics, node).Construct(awaitExpressionType);
+            }
+
             return new BoundAwaitExpression(node, isConditional, expression, info, awaitExpressionType, hasErrors);
         }
 

@@ -88,5 +88,35 @@ class C
             var treeModel = comp.GetSemanticModel(tree);
             return treeModel.GetAwaitExpressionInfo(syntaxNode);
         }
+
+        [Theory]
+        [InlineData("Task", "void")]
+        [InlineData("ValueTask?", "void")]
+        [InlineData("Task<int>", "int?")]
+        [InlineData("ValueTask<int>?", "int?")]
+        [InlineData("Task<string>", "string")]
+        [InlineData("ValueTask<string>?", "string")]
+        public void TestResultType(string taskType, string resultType)
+        {
+            string source = $@"
+using System.Threading.Tasks;
+
+public class C
+{{
+    public async void M({taskType} t)
+    {{
+        await ? t;
+    }}
+}}
+";
+
+            var tree = Parse(source, options: WithConditionalAwait);
+            var comp = CreateCompilation(new SyntaxTree[] { tree }, targetFramework: TargetFramework.NetCoreApp30);
+            comp.VerifyDiagnostics();
+            var syntaxNode = (AwaitExpressionSyntax)tree.FindNodeOrTokenByKind(SyntaxKind.AwaitExpression).AsNode();
+            var treeModel = comp.GetSemanticModel(tree);
+            var typeInfo = treeModel.GetTypeInfo(syntaxNode);
+            Assert.Equal(resultType, typeInfo.Type.ToDisplayString());
+        }
     }
 }
