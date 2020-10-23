@@ -1296,6 +1296,10 @@ namespace Microsoft.CodeAnalysis.Operations
         /// Awaited operation.
         /// </summary>
         IOperation Operation { get; }
+        /// <summary>
+        /// Is this a null-conditional await.
+        /// </summary>
+        bool IsConditional { get; }
     }
     /// <summary>
     /// Represents a base interface for assignments.
@@ -5495,9 +5499,13 @@ namespace Microsoft.CodeAnalysis.Operations
     }
     internal abstract partial class BaseAwaitOperation : Operation, IAwaitOperation
     {
-        internal BaseAwaitOperation(SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
-            : base(OperationKind.Await, semanticModel, syntax, type, constantValue, isImplicit) { }
+        internal BaseAwaitOperation(bool isConditional, SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
+            : base(OperationKind.Await, semanticModel, syntax, type, constantValue, isImplicit)
+        {
+            IsConditional = isConditional;
+        }
         public abstract IOperation Operation { get; }
+        public bool IsConditional { get; }
         public override IEnumerable<IOperation> Children
         {
             get
@@ -5510,8 +5518,8 @@ namespace Microsoft.CodeAnalysis.Operations
     }
     internal sealed partial class AwaitOperation : BaseAwaitOperation, IAwaitOperation
     {
-        internal AwaitOperation(IOperation operation, SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
-            : base(semanticModel, syntax, type, constantValue, isImplicit)
+        internal AwaitOperation(IOperation operation, bool isConditional, SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
+            : base(isConditional, semanticModel, syntax, type, constantValue, isImplicit)
         {
             Operation = SetParentOperation(operation, this);
         }
@@ -5520,8 +5528,8 @@ namespace Microsoft.CodeAnalysis.Operations
     internal abstract partial class LazyAwaitOperation : BaseAwaitOperation, IAwaitOperation
     {
         private IOperation _lazyOperation = s_unset;
-        internal LazyAwaitOperation(SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
-            : base(semanticModel, syntax, type, constantValue, isImplicit){ }
+        internal LazyAwaitOperation(bool isConditional, SemanticModel semanticModel, SyntaxNode syntax, ITypeSymbol type, ConstantValue constantValue, bool isImplicit)
+            : base(isConditional, semanticModel, syntax, type, constantValue, isImplicit){ }
         protected abstract IOperation CreateOperation();
         public override IOperation Operation
         {

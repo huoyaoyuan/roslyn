@@ -1204,6 +1204,11 @@
         <summary>Awaited operation.</summary>
       </Comments>
     </Property>
+    <Property Name="IsConditional" Type="bool">
+      <Comments>
+        <summary>Is this a null-conditional await.</summary>
+      </Comments>
+    </Property>
   </Node>
   <AbstractNode Name="IAssignmentOperation" Base="IOperation">
     <Comments>

@@ -162,7 +162,7 @@ Namespace Microsoft.CodeAnalysis.Operations
         Private ReadOnly _operation As BoundNode
 
         Friend Sub New(operationFactory As VisualBasicOperationFactory, operation As BoundNode, semanticModel As SemanticModel, syntax As SyntaxNode, type As ITypeSymbol, constantValue As ConstantValue, isImplicit As Boolean)
-            MyBase.New(semanticModel, syntax, type, constantValue, isImplicit)
+            MyBase.New(False, semanticModel, syntax, type, constantValue, isImplicit)
             _operationFactory = operationFactory
             _operation = operation
         End Sub

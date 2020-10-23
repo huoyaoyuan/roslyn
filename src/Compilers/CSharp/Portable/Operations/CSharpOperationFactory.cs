@@ -1365,11 +1365,12 @@ namespace Microsoft.CodeAnalysis.Operations
         private IAwaitOperation CreateBoundAwaitExpressionOperation(BoundAwaitExpression boundAwaitExpression)
         {
             BoundNode awaitedValue = boundAwaitExpression.Expression;
+            bool isConditional = boundAwaitExpression.IsConditional;
             SyntaxNode syntax = boundAwaitExpression.Syntax;
             ITypeSymbol type = boundAwaitExpression.GetPublicTypeSymbol();
             ConstantValue constantValue = boundAwaitExpression.ConstantValue;
             bool isImplicit = boundAwaitExpression.WasCompilerGenerated;
-            return new CSharpLazyAwaitOperation(this, awaitedValue, _semanticModel, syntax, type, constantValue, isImplicit);
+            return new CSharpLazyAwaitOperation(this, awaitedValue, isConditional, _semanticModel, syntax, type, constantValue, isImplicit);
         }
 
         private IArrayElementReferenceOperation CreateBoundArrayAccessOperation(BoundArrayAccess boundArrayAccess)
