@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Collections.Immutable;
+using System.Diagnostics;
 using Microsoft.CodeAnalysis.CSharp.Symbols;
 
 namespace Microsoft.CodeAnalysis.CSharp
@@ -16,7 +17,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
         public BoundExpression VisitAwaitExpression(BoundAwaitExpression node, bool used)
         {
-            return RewriteAwaitExpression((BoundExpression)base.VisitAwaitExpression(node)!, used);
+            return RewriteAwaitExpression((BoundAwaitExpression)base.VisitAwaitExpression(node)!, used);
         }
 
         private BoundExpression RewriteAwaitExpression(SyntaxNode syntax, BoundExpression rewrittenExpression, BoundAwaitableInfo awaitableInfo, TypeSymbol type, bool used)
@@ -27,10 +28,11 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// <summary>
         /// Lower an await expression that has already had its components rewritten.
         /// </summary>
-        private BoundExpression RewriteAwaitExpression(BoundExpression rewrittenAwait, bool used)
+        private BoundExpression RewriteAwaitExpression(BoundAwaitExpression rewrittenAwait, bool used)
         {
             _sawAwait = true;
-            if (!used)
+
+            if (!used && !rewrittenAwait.IsConditional)
             {
                 // Await expression is already at the statement level.
                 return rewrittenAwait;
@@ -44,14 +46,73 @@ namespace Microsoft.CodeAnalysis.CSharp
             // that the await result itself is stored into a temp at the statement level, as that is
             // the form handled by async lowering.
             _needsSpilling = true;
-            var tempAccess = _factory.StoreToTemp(rewrittenAwait, out BoundAssignmentOperator tempAssignment, syntaxOpt: rewrittenAwait.Syntax,
+            var nonConditional = rewrittenAwait.Update(false, rewrittenAwait.Expression, rewrittenAwait.AwaitableInfo, rewrittenAwait.AwaitableInfo.GetResult!.ReturnType);
+            var tempAccess = _factory.StoreToTemp(nonConditional, out BoundAssignmentOperator tempAssignment, syntaxOpt: rewrittenAwait.Syntax,
                 kind: SynthesizedLocalKind.Spill);
-            return new BoundSpillSequence(
+            var awaitedResult = new BoundSpillSequence(
                 syntax: rewrittenAwait.Syntax,
                 locals: ImmutableArray.Create<LocalSymbol>(tempAccess.LocalSymbol),
                 sideEffects: ImmutableArray.Create<BoundExpression>(tempAssignment),
                 value: tempAccess,
                 type: tempAccess.Type);
+
+            if (!rewrittenAwait.IsConditional)
+            {
+                return awaitedResult;
+            }
+
+            // Conditional await
+
+            var loweredExpression = rewrittenAwait.Expression;
+            Debug.Assert(loweredExpression.Type is { });
+            var receiverType = loweredExpression.Type;
+
+            // Check trivial case
+            if (loweredExpression.IsDefaultValue() && receiverType.IsReferenceType)
+            {
+                return _factory.Default(rewrittenAwait.Type);
+            }
+
+            BoundLocal? temp = null;
+            BoundAssignmentOperator? store = null;
+            if (CanChangeValueBetweenReads(loweredExpression))
+            {
+                temp = _factory.StoreToTemp(loweredExpression, out store);
+                loweredExpression = temp;
+            }
+
+            var objectType = _compilation.GetSpecialType(SpecialType.System_Object);
+            var condition = _factory.ObjectNotEqual(
+                loweredExpression,
+                _factory.Null(objectType));
+
+            BoundExpression consequence;
+            if (awaitedResult.Type.IsNonNullableValueType())
+            {
+                consequence = _factory.Convert(rewrittenAwait.Type, awaitedResult);
+            }
+            else
+            {
+                consequence = awaitedResult;
+            }
+
+            var result = RewriteConditionalOperator(rewrittenAwait.Syntax,
+                condition,
+                consequence,
+                _factory.Default(rewrittenAwait.Type),
+                null,
+                rewrittenAwait.Type,
+                false);
+
+            if (temp is not null)
+            {
+                Debug.Assert(store is not null);
+                result = _factory.MakeSequence(temp.LocalSymbol,
+                    store,
+                    result);
+            }
+
+            return result;
         }
     }
 }

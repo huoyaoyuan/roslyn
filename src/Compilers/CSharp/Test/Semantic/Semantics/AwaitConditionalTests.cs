@@ -116,5 +116,124 @@ public class C
             var typeInfo = treeModel.GetTypeInfo(syntaxNode);
             Assert.Equal(resultType, typeInfo.Type.ToDisplayString());
         }
+
+        [Fact]
+        public void TestResult_ValueType()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(Task.FromResult(42)).Result);
+        Console.WriteLine(M(null).Result);
+    }
+
+    public static async Task<int?> M(Task<int> task)
+    {
+        return (await? task) + 1;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                expectedOutput:
+@"43
+
+");
+        }
+
+        [Fact]
+        public void TestResult_NullableValueType()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(Task.FromResult<int?>(42)).Result);
+        Console.WriteLine(M(null).Result);
+    }
+
+    public static async Task<int?> M(Task<int?> task)
+    {
+        return (await? task) + 1;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                expectedOutput:
+@"43
+
+");
+        }
+
+        [Fact]
+        public void TestResult_String()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(Task.FromResult(""abc"")).Result);
+        Console.WriteLine(M(null).Result);
+    }
+
+    public static async Task<string> M(Task<string> task)
+    {
+        return (await? task)?.ToUpper();
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                expectedOutput:
+@"ABC
+
+");
+        }
+
+        [Fact(Skip = "NotImplemented")]
+        public void TestResult_Void()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        M(Task.Run(() => Console.WriteLine(42))).Wait();
+        M(null).Wait();
+    }
+
+    public static async Task M(Task task)
+    {
+        await? task;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                expectedOutput:
+@"42
+");
+        }
     }
 }
