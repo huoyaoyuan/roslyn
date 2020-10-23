@@ -1297,6 +1297,11 @@ namespace Microsoft.CodeAnalysis.Test.Utilities
         public override void VisitAwait(IAwaitOperation operation)
         {
             LogString(nameof(IAwaitOperation));
+            if (operation.IsConditional)
+            {
+                LogString(" (IsConditional)");
+            }
+
             LogCommonPropertiesAndNewLine(operation);
 
             Visit(operation.Operation, "Expression");

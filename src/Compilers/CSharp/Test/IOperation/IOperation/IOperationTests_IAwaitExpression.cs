@@ -509,5 +509,50 @@ Block[B5] - Exit
 ";
             VerifyFlowGraphAndDiagnosticsForTest<BlockSyntax>(source, expectedFlowGraph, expectedDiagnostics);
         }
+
+        [CompilerTrait(CompilerFeature.IOperation, CompilerFeature.Dataflow)]
+        [Fact]
+        public void AwaitFlow_Conditional()
+        {
+            string source = @"
+using System.Threading.Tasks;
+
+class C
+{
+    static async Task M()
+    /*<bind>*/{
+
+        await? M2();
+    }/*</bind>*/
+
+    static Task M2() => null;
+}
+";
+            var expectedDiagnostics = DiagnosticDescription.None;
+
+            string expectedFlowGraph = @"
+Block[B0] - Entry
+    Statements (0)
+    Next (Regular) Block[B1]
+Block[B1] - Block
+    Predecessors: [B0]
+    Statements (1)
+        IExpressionStatementOperation (OperationKind.ExpressionStatement, Type: null) (Syntax: 'await? M2();')
+          Expression: 
+            IAwaitOperation (IsConditional) (OperationKind.Await, Type: System.Void) (Syntax: 'await? M2()')
+              Expression: 
+                IInvocationOperation (System.Threading.Tasks.Task C.M2()) (OperationKind.Invocation, Type: System.Threading.Tasks.Task) (Syntax: 'M2()')
+                  Instance Receiver: 
+                    null
+                  Arguments(0)
+
+    Next (Regular) Block[B2]
+Block[B2] - Exit
+    Predecessors: [B1]
+    Statements (0)
+";
+            VerifyFlowGraphAndDiagnosticsForTest<BlockSyntax>(source, expectedFlowGraph, expectedDiagnostics,
+                parseOptions: TestOptions.WithConditionalAwait);
+        }
     }
 }

@@ -16,8 +16,6 @@ namespace Microsoft.CodeAnalysis.CSharp.Semantic.UnitTests.Semantics
 {
     public class AwaitConditionalTests : CompilingTestBase
     {
-        private static readonly CSharpParseOptions WithConditionalAwait = TestOptions.Regular.WithLanguageVersion(MessageID.IDS_FeatureConditionalAwait.RequiredVersion());
-
         [Fact]
         public void TestConditionalAwaitTask()
         {
@@ -80,7 +78,7 @@ class C
 
         private AwaitExpressionInfo GetAwaitExpressionInfo(string text, out CSharpCompilation compilation, params DiagnosticDescription[] diagnostics)
         {
-            var tree = Parse(text, options: WithConditionalAwait);
+            var tree = Parse(text, options: TestOptions.WithConditionalAwait);
             var comp = CreateCompilation(new SyntaxTree[] { tree }, targetFramework: TargetFramework.NetCoreApp30);
             comp.VerifyDiagnostics(diagnostics);
             compilation = comp;
@@ -110,7 +108,7 @@ public class C
 }}
 ";
 
-            var tree = Parse(source, options: WithConditionalAwait);
+            var tree = Parse(source, options: TestOptions.WithConditionalAwait);
             var comp = CreateCompilation(new SyntaxTree[] { tree }, targetFramework: TargetFramework.NetCoreApp30);
             comp.VerifyDiagnostics();
             var syntaxNode = (AwaitExpressionSyntax)tree.FindNodeOrTokenByKind(SyntaxKind.AwaitExpression).AsNode();
