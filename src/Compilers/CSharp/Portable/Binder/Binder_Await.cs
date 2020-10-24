@@ -40,9 +40,18 @@ namespace Microsoft.CodeAnalysis.CSharp
             TypeSymbol awaitExpressionType = info.GetResult?.ReturnType ?? (hasErrors ? CreateErrorType() : Compilation.DynamicType);
 
             // The same as BindConditionalAccessExpression
-            if (isConditional && awaitExpressionType.IsValueType && !awaitExpressionType.IsNullableType() && !awaitExpressionType.IsVoidType())
+            if (isConditional)
             {
-                awaitExpressionType = GetSpecialType(SpecialType.System_Nullable_T, diagnostics, node).Construct(awaitExpressionType);
+                if (!awaitExpressionType.IsReferenceType && !awaitExpressionType.IsValueType)
+                {
+                    // Unconstraint generic type - reject like conditional access
+                    Error(diagnostics, ErrorCode.ERR_BadUnaryOp, node, "await?", expression.Type!);
+                    awaitExpressionType = CreateErrorType();
+                }
+                else if (awaitExpressionType.IsValueType && !awaitExpressionType.IsNullableType() && !awaitExpressionType.IsVoidType())
+                {
+                    awaitExpressionType = GetSpecialType(SpecialType.System_Nullable_T, diagnostics, node).Construct(awaitExpressionType);
+                }
             }
 
             return new BoundAwaitExpression(node, isConditional, expression, info, awaitExpressionType, hasErrors);

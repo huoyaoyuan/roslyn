@@ -76,6 +76,26 @@ class C
                     .WithLocation(8, 9));
         }
 
+        [Fact]
+        public void TestConditionalAwaitUnconstrainedGeneric()
+        {
+            const string source = @"
+using System.Threading.Tasks;
+
+class C
+{
+    public async void M<T>(Task<T> t)
+    {
+        await? t;
+    }
+}
+";
+            var info = GetAwaitExpressionInfo(source, out var compilation,
+                Diagnostic(ErrorCode.ERR_BadUnaryOp, "await? t")
+                    .WithArguments("await?", "System.Threading.Tasks.Task<T>")
+                    .WithLocation(8, 9));
+        }
+
         private AwaitExpressionInfo GetAwaitExpressionInfo(string text, out CSharpCompilation compilation, params DiagnosticDescription[] diagnostics)
         {
             var tree = Parse(text, options: TestOptions.WithConditionalAwait);
