@@ -47,14 +47,30 @@ namespace Microsoft.CodeAnalysis.CSharp
             // the form handled by async lowering.
             _needsSpilling = true;
             var nonConditional = rewrittenAwait.Update(false, rewrittenAwait.Expression, rewrittenAwait.AwaitableInfo, rewrittenAwait.AwaitableInfo.GetResult!.ReturnType);
-            var tempAccess = _factory.StoreToTemp(nonConditional, out BoundAssignmentOperator tempAssignment, syntaxOpt: rewrittenAwait.Syntax,
-                kind: SynthesizedLocalKind.Spill);
-            var awaitedResult = new BoundSpillSequence(
-                syntax: rewrittenAwait.Syntax,
-                locals: ImmutableArray.Create<LocalSymbol>(tempAccess.LocalSymbol),
-                sideEffects: ImmutableArray.Create<BoundExpression>(tempAssignment),
-                value: tempAccess,
-                type: tempAccess.Type);
+            BoundSpillSequence awaitedResult;
+
+            if (rewrittenAwait.Type.IsVoidType())
+            {
+                Debug.Assert(!used);
+                Debug.Assert(rewrittenAwait.IsConditional);
+                awaitedResult = new BoundSpillSequence(
+                    syntax: rewrittenAwait.Syntax,
+                    locals: ImmutableArray<LocalSymbol>.Empty,
+                    sideEffects: ImmutableArray<BoundExpression>.Empty,
+                    value: nonConditional,
+                    type: nonConditional.Type);
+            }
+            else
+            {
+                var tempAccess = _factory.StoreToTemp(nonConditional, out BoundAssignmentOperator tempAssignment, syntaxOpt: rewrittenAwait.Syntax,
+                    kind: SynthesizedLocalKind.Spill);
+                awaitedResult = new BoundSpillSequence(
+                    syntax: rewrittenAwait.Syntax,
+                    locals: ImmutableArray.Create<LocalSymbol>(tempAccess.LocalSymbol),
+                    sideEffects: ImmutableArray.Create<BoundExpression>(tempAssignment),
+                    value: tempAccess,
+                    type: tempAccess.Type);
+            }
 
             if (!rewrittenAwait.IsConditional)
             {

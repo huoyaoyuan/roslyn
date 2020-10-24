@@ -207,7 +207,7 @@ public class Program
 ");
         }
 
-        [Fact(Skip = "NotImplemented")]
+        [Fact]
         public void TestResult_Void()
         {
             const string source = @"
