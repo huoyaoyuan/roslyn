@@ -255,5 +255,32 @@ public class Program
 @"42
 ");
         }
+
+        [Fact]
+        public void TestImplicitNullConversion()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(Task.FromResult<int>(42)).Result);
+    }
+
+    public static async Task<int?> M(Task<int> task)
+    {
+        return await? task;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                expectedOutput:
+@"42");
+        }
     }
 }

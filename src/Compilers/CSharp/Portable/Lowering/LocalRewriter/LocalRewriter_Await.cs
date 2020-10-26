@@ -103,9 +103,14 @@ namespace Microsoft.CodeAnalysis.CSharp
                 _factory.Null(objectType));
 
             BoundExpression consequence;
-            if (awaitedResult.Type.IsNonNullableValueType())
+            if (!awaitedResult.Type.IsVoidType() && awaitedResult.Type.IsNonNullableValueType())
             {
-                consequence = _factory.Convert(rewrittenAwait.Type, awaitedResult);
+                consequence = RewriteNullableConversion(rewrittenAwait.Syntax,
+                    awaitedResult,
+                    Conversion.MakeNullableConversion(ConversionKind.ImplicitNullable, Conversion.Identity),
+                    false,
+                    false,
+                    rewrittenAwait.Type);
             }
             else
             {
