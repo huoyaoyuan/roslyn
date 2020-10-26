@@ -182,7 +182,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         /// <summary>
         /// State of awaitable expressions, for substitution in placeholders within GetAwaiter calls.
         /// </summary>
-        private PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result)>? _awaitablePlaceholdersOpt;
+        private PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result, bool IsConditional)>? _awaitablePlaceholdersOpt;
 
         /// <summary>
         /// True if we're analyzing speculative code. This turns off some initialization steps
@@ -8897,12 +8897,31 @@ namespace Microsoft.CodeAnalysis.CSharp
             var placeholder = awaitableInfo.AwaitableInstancePlaceholder;
             Debug.Assert(placeholder is object);
 
-            _awaitablePlaceholdersOpt ??= PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result)>.GetInstance();
-            _awaitablePlaceholdersOpt.Add(placeholder, (node.Expression, _visitResult));
+            var expressionState = this.State.Clone();
+            if (node.IsConditional)
+            {
+                if (IsConstantNull(node.Expression))
+                {
+                    SetUnreachable();
+                }
+                else
+                {
+                    LearnFromNullTest(node.Expression, ref expressionState);
+                    LearnFromNonNullTest(node.Expression, ref this.State);
+                }
+            }
+
+            _awaitablePlaceholdersOpt ??= PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result, bool IsConditional)>.GetInstance();
+            _awaitablePlaceholdersOpt.Add(placeholder, (node.Expression, _visitResult, node.IsConditional));
             Visit(awaitableInfo);
             _awaitablePlaceholdersOpt.Remove(placeholder);
 
-            if (node.Type.IsValueType || node.HasErrors || awaitableInfo.GetResult is null)
+            if (node.IsConditional)
+            {
+                Join(ref this.State, ref expressionState);
+            }
+
+            if ((!node.IsConditional && node.Type.IsValueType) || node.HasErrors || awaitableInfo.GetResult is null)
             {
                 SetNotNullResult(node);
             }
@@ -8916,7 +8935,22 @@ namespace Microsoft.CodeAnalysis.CSharp
                     ? getResult.OriginalDefinition.AsMember(taskAwaiterType)
                     : getResult;
 
-                SetResultType(node, reinferredGetResult.ReturnTypeWithAnnotations.ToTypeWithState());
+                var returnType = reinferredGetResult.ReturnTypeWithAnnotations;
+                // Like conditional access, result of conditional await should be always nullable.
+                if (node.IsConditional && !returnType.Type.IsVoidType())
+                {
+                    // Re-apply nullable transform on conditional await.
+                    var type = returnType.Type;
+                    if (type.IsNonNullableValueType())
+                    {
+                        type = compilation.GetSpecialType(SpecialType.System_Nullable_T).Construct(type);
+                    }
+                    SetResultType(node, TypeWithState.Create(type, NullableFlowState.MaybeNull));
+                }
+                else
+                {
+                    SetResultType(node, returnType.ToTypeWithState());
+                }
             }
 
             return result;
@@ -9493,7 +9527,14 @@ namespace Microsoft.CodeAnalysis.CSharp
             if (_awaitablePlaceholdersOpt != null && _awaitablePlaceholdersOpt.TryGetValue(node, out var value))
             {
                 var result = value.Result;
-                SetResult(node, result.RValueType, result.LValueType);
+                var rvalueType = result.RValueType;
+
+                if (value.IsConditional)
+                {
+                    rvalueType = TypeWithState.Create(rvalueType.Type, NullableFlowState.NotNull);
+                }
+
+                SetResult(node, rvalueType, result.LValueType);
             }
             else
             {
