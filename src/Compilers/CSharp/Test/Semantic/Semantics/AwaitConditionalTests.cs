@@ -389,5 +389,102 @@ public class Program
 42
 ");
         }
+
+        [Fact]
+        public void TestResult_GenericAwaitable()
+        {
+            const string source = @"
+using System;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+
+interface IAwaitable
+{
+    TaskAwaiter<int> GetAwaiter();
+}
+
+class ClassAwaitable : IAwaitable
+{
+    TaskAwaiter<int> IAwaitable.GetAwaiter() => Task.FromResult(42).GetAwaiter();
+}
+
+struct StructAwaitable : IAwaitable
+{
+    TaskAwaiter<int> IAwaitable.GetAwaiter() => Task.FromResult(42).GetAwaiter();
+}
+
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(MStruct<StructAwaitable>(new StructAwaitable()).Result);
+        Console.WriteLine(MStruct<StructAwaitable>(null).Result);
+        Console.WriteLine(MClass(new ClassAwaitable()).Result);
+        Console.WriteLine(MClass<ClassAwaitable>(null).Result);
+    }
+
+    static async Task<int?> MStruct<T>(T? task) where T : struct, IAwaitable
+    {
+        return (await? task) + 1;
+    }
+
+    static async Task<int?> MClass<T>(T task) where T : class, IAwaitable
+    {
+        return (await? task) + 2;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                targetFramework: TargetFramework.NetCoreApp30,
+                expectedOutput:
+@"43
+
+44
+
+");
+        }
+
+        [Fact]
+        public void TestResult_WithConditionalAndCoalesce()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+class C
+{
+    public string S;
+}
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(Task.FromResult(new C { S = ""Value"" })).Result);
+        Console.WriteLine(M(Task.FromResult(new C())).Result);
+        Console.WriteLine(M(Task.FromResult<C>(null)).Result);
+        Console.WriteLine(M(null).Result);
+    }
+
+    static async Task<string> M(Task<C> task)
+    {
+        return (await? task)?.S ?? ""null"";
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                targetFramework: TargetFramework.NetCoreApp30,
+                expectedOutput:
+@"Value
+null
+null
+null
+");
+        }
     }
 }
