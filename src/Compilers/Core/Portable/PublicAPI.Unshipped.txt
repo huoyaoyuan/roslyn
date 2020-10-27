@@ -1,1 +1,2 @@
+Microsoft.CodeAnalysis.Operations.IAwaitOperation.IsConditional.get -> bool
 const Microsoft.CodeAnalysis.WellKnownDiagnosticTags.CompilationEnd = "CompilationEnd" -> string

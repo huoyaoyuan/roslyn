@@ -1,1 +1,4 @@
-
+Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax.QuestionToken.get -> Microsoft.CodeAnalysis.SyntaxToken
+Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax.Update(Microsoft.CodeAnalysis.SyntaxToken awaitKeyword, Microsoft.CodeAnalysis.SyntaxToken questionToken, Microsoft.CodeAnalysis.CSharp.Syntax.ExpressionSyntax expression) -> Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax
+Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax.WithQuestionToken(Microsoft.CodeAnalysis.SyntaxToken questionToken) -> Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax
+static Microsoft.CodeAnalysis.CSharp.SyntaxFactory.AwaitExpression(Microsoft.CodeAnalysis.SyntaxToken awaitKeyword, Microsoft.CodeAnalysis.SyntaxToken questionToken, Microsoft.CodeAnalysis.CSharp.Syntax.ExpressionSyntax expression) -> Microsoft.CodeAnalysis.CSharp.Syntax.AwaitExpressionSyntax
