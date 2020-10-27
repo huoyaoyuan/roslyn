@@ -96,6 +96,81 @@ class C
                     .WithLocation(8, 9));
         }
 
+        [Fact]
+        public void TestGenericAwaitable_ValueType()
+        {
+            const string source = @"
+using System.Runtime.CompilerServices;
+
+interface IAwaitable
+{
+    TaskAwaiter GetAwaiter();
+}
+
+class C
+{
+    public async void M<T>(T? t) where T : struct, IAwaitable
+    {
+        await? t;
+    }
+}
+";
+            var info = GetAwaitExpressionInfo(source, out var compilation);
+            Assert.Equal("System.Runtime.CompilerServices.TaskAwaiter IAwaitable.GetAwaiter()", info.GetAwaiterMethod.ToTestDisplayString());
+            Assert.Equal("void System.Runtime.CompilerServices.TaskAwaiter.GetResult()", info.GetResultMethod.ToTestDisplayString());
+            Assert.Equal("System.Boolean System.Runtime.CompilerServices.TaskAwaiter.IsCompleted { get; }", info.IsCompletedProperty.ToTestDisplayString());
+        }
+
+        [Fact]
+        public void TestGenericAwaitable_ReferenceType()
+        {
+            const string source = @"
+using System.Runtime.CompilerServices;
+
+interface IAwaitable
+{
+    TaskAwaiter GetAwaiter();
+}
+
+class C
+{
+    public async void M<T>(T t) where T : class, IAwaitable
+    {
+        await? t;
+    }
+}
+";
+            var info = GetAwaitExpressionInfo(source, out var compilation);
+            Assert.Equal("System.Runtime.CompilerServices.TaskAwaiter IAwaitable.GetAwaiter()", info.GetAwaiterMethod.ToTestDisplayString());
+            Assert.Equal("void System.Runtime.CompilerServices.TaskAwaiter.GetResult()", info.GetResultMethod.ToTestDisplayString());
+            Assert.Equal("System.Boolean System.Runtime.CompilerServices.TaskAwaiter.IsCompleted { get; }", info.IsCompletedProperty.ToTestDisplayString());
+        }
+
+        [Fact]
+        public void TestGenericAwaitable_Unconstrained()
+        {
+            const string source = @"
+using System.Runtime.CompilerServices;
+
+interface IAwaitable
+{
+    TaskAwaiter GetAwaiter();
+}
+
+class C
+{
+    public async void M<T>(T t) where T : IAwaitable
+    {
+        await? t;
+    }
+}
+";
+            var info = GetAwaitExpressionInfo(source, out var compilation,
+                Diagnostic(ErrorCode.ERR_BadUnaryOp, "await? t")
+                    .WithArguments("await?", "T")
+                    .WithLocation(13, 9));
+        }
+
         private AwaitExpressionInfo GetAwaitExpressionInfo(string text, out CSharpCompilation compilation, params DiagnosticDescription[] diagnostics)
         {
             var tree = Parse(text, options: TestOptions.WithConditionalAwait);

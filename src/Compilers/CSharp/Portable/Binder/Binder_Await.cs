@@ -342,15 +342,16 @@ namespace Microsoft.CodeAnalysis.CSharp
             }
 
             var nonNullExpression = expression;
-            if (isConditional && nonNullExpression.Type?.IsValueType == true)
+            if (isConditional)
             {
-                if (nonNullExpression.Type.IsNullableType())
+                if (expression.Type.IsNullableType())
                 {
                     nonNullExpression = MakeInvocationExpression(node, nonNullExpression, nameof(System.Nullable<int>.GetValueOrDefault), ImmutableArray<BoundExpression>.Empty, diagnostics);
                 }
-                else
+                else if (!expression.Type.IsReferenceType)
                 {
-                    Error(diagnostics, ErrorCode.ERR_BadUnaryOp, node, "await?", nonNullExpression.Type);
+                    // non-nullable value type and unconstrained generic type cannot be conditional accessed
+                    Error(diagnostics, ErrorCode.ERR_BadUnaryOp, node, "await?", expression.Type);
                 }
             }
 
