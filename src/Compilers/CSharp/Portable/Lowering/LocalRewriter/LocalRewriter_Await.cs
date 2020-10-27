@@ -97,10 +97,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                 loweredExpression = temp;
             }
 
-            var objectType = _compilation.GetSpecialType(SpecialType.System_Object);
-            var condition = _factory.ObjectNotEqual(
-                loweredExpression,
-                _factory.Null(objectType));
+            var condition = MakeNullCheck(rewrittenAwait.Syntax, loweredExpression, BinaryOperatorKind.NotEqual);
 
             BoundExpression consequence;
             if (!awaitedResult.Type.IsVoidType() && awaitedResult.Type.IsNonNullableValueType())

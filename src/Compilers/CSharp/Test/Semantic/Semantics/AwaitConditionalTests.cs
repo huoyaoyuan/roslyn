@@ -282,5 +282,37 @@ public class Program
                 expectedOutput:
 @"42");
         }
+
+        [Fact]
+        public void TestResult_ValueTask()
+        {
+            const string source = @"
+using System;
+using System.Threading.Tasks;
+
+public class Program
+{
+    public static void Main()
+    {
+        Console.WriteLine(M(new ValueTask<int>(Task.FromResult(42))).Result);
+        Console.WriteLine(M(new ValueTask<int>(42)).Result);
+        Console.WriteLine(M(null).Result);
+    }
+
+    public static async Task<int?> M(ValueTask<int>? task)
+    {
+        return await? task;
+    }
+}
+";
+
+            CompileAndVerify(source,
+                parseOptions: TestOptions.WithConditionalAwait,
+                targetFramework: TargetFramework.NetCoreApp30,
+                expectedOutput:
+@"42
+42
+");
+        }
     }
 }
