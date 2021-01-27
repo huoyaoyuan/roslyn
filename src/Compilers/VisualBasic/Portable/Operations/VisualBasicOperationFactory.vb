@@ -404,7 +404,7 @@ Namespace Microsoft.CodeAnalysis.Operations
             Dim syntax As SyntaxNode = boundAwaitOperator.Syntax
             Dim type As ITypeSymbol = boundAwaitOperator.Type
             Dim isImplicit As Boolean = boundAwaitOperator.WasCompilerGenerated
-            Return New AwaitOperation(awaitedValue, _semanticModel, syntax, type, isImplicit)
+            Return New AwaitOperation(awaitedValue, False, _semanticModel, syntax, type, isImplicit)
         End Function
 
         Private Function CreateBoundNameOfOperatorOperation(boundNameOfOperator As BoundNameOfOperator) As INameOfOperation

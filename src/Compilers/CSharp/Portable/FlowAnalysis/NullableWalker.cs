@@ -8527,7 +8527,7 @@ namespace Microsoft.CodeAnalysis.CSharp
 
                     EnsureAwaitablePlaceholdersInitialized();
                     var result = new VisitResult(GetReturnTypeWithState(moveNextAsyncMethod), moveNextAsyncMethod.ReturnTypeWithAnnotations);
-                    _awaitablePlaceholdersOpt.Add(moveNextPlaceholder, (moveNextPlaceholder, result));
+                    _awaitablePlaceholdersOpt.Add(moveNextPlaceholder, (moveNextPlaceholder, result, false));
                     Visit(awaitMoveNextInfo);
                     _awaitablePlaceholdersOpt.Remove(moveNextPlaceholder);
                 }
@@ -8543,7 +8543,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                         var disposeAsyncMethod = (MethodSymbol)AsMemberOfType(reinferredGetEnumeratorMethod.ReturnType, originalDisposeMethod);
                         EnsureAwaitablePlaceholdersInitialized();
                         var result = new VisitResult(GetReturnTypeWithState(disposeAsyncMethod), disposeAsyncMethod.ReturnTypeWithAnnotations);
-                        _awaitablePlaceholdersOpt.Add(disposalPlaceholder, (disposalPlaceholder, result));
+                        _awaitablePlaceholdersOpt.Add(disposalPlaceholder, (disposalPlaceholder, result, false));
                         addedPlaceholder = true;
                     }
 
@@ -9532,7 +9532,7 @@ namespace Microsoft.CodeAnalysis.CSharp
         [MemberNotNull(nameof(_awaitablePlaceholdersOpt))]
         private void EnsureAwaitablePlaceholdersInitialized()
         {
-            _awaitablePlaceholdersOpt ??= PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result)>.GetInstance();
+            _awaitablePlaceholdersOpt ??= PooledDictionary<BoundAwaitableValuePlaceholder, (BoundExpression AwaitableExpression, VisitResult Result, bool IsConditional)>.GetInstance();
         }
 
         public override BoundNode? VisitAwaitableValuePlaceholder(BoundAwaitableValuePlaceholder node)

@@ -1410,10 +1410,11 @@ namespace Microsoft.CodeAnalysis.Operations
         private IAwaitOperation CreateBoundAwaitExpressionOperation(BoundAwaitExpression boundAwaitExpression)
         {
             IOperation awaitedValue = Create(boundAwaitExpression.Expression);
+            bool isConditional = boundAwaitExpression.IsConditional;
             SyntaxNode syntax = boundAwaitExpression.Syntax;
             ITypeSymbol? type = boundAwaitExpression.GetPublicTypeSymbol();
             bool isImplicit = boundAwaitExpression.WasCompilerGenerated;
-            return new AwaitOperation(awaitedValue, _semanticModel, syntax, type, isImplicit);
+            return new AwaitOperation(awaitedValue, isConditional, _semanticModel, syntax, type, isImplicit);
         }
 
         private IArrayElementReferenceOperation CreateBoundArrayAccessOperation(BoundArrayAccess boundArrayAccess)
