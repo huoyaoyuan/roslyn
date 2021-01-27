@@ -315,7 +315,7 @@ namespace Microsoft.CodeAnalysis
                 return default(SyntaxList<TNode>);
             }
 
-            var newGreen = GreenNode.CreateList(items.Select(n => n.Green));
+            var newGreen = GreenNode.CreateList(items, static n => n.Green);
             return new SyntaxList<TNode>(newGreen!.CreateRed());
         }
 
@@ -372,6 +372,19 @@ namespace Microsoft.CodeAnalysis
         {
             Debug.Assert(_node == null || Count != 0);
             return _node != null;
+        }
+
+        internal bool All(Func<TNode, bool> predicate)
+        {
+            foreach (var item in this)
+            {
+                if (!predicate(item))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         // for debugging

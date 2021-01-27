@@ -214,8 +214,8 @@ namespace Microsoft.CodeAnalysis.CSharp
         IDS_Parameter = MessageBase + 12789,
         IDS_Return = MessageBase + 12790,
         IDS_FeatureVarianceSafetyForStaticInterfaceMembers = MessageBase + 12791,
-
-        IDS_FeatureConditionalAwait = MessageBase + 12792
+        IDS_FeatureConstantInterpolatedStrings = MessageBase + 12792,
+        IDS_FeatureConditionalAwait = MessageBase + 12793
     }
 
     // Message IDs may refer to strings that need to be localized.
@@ -350,6 +350,7 @@ namespace Microsoft.CodeAnalysis.CSharp
                     return LanguageVersion.CSharp9;
 
                 case MessageID.IDS_FeatureVarianceSafetyForStaticInterfaceMembers: //semantic check
+                case MessageID.IDS_FeatureConstantInterpolatedStrings: //semantic check
                 case MessageID.IDS_FeatureConditionalAwait: //syntax check
                     return LanguageVersion.Preview;
 

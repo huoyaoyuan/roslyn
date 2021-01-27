@@ -7,6 +7,7 @@ using System.ComponentModel.Composition;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Editor;
 using Microsoft.CodeAnalysis.Host.Mef;
+using Microsoft.CodeAnalysis.LanguageServer;
 using Microsoft.CodeAnalysis.Shared.TestHooks;
 using Microsoft.VisualStudio.LanguageServer.Client;
 using Microsoft.VisualStudio.LanguageServer.Protocol;
@@ -27,9 +28,10 @@ namespace Microsoft.VisualStudio.LanguageServices.Xaml
         public XamlInProcLanguageClient(
             XamlLanguageServerProtocol languageServerProtocol,
             VisualStudioWorkspace workspace,
+            IDiagnosticService diagnosticService,
             IAsynchronousOperationListenerProvider listenerProvider,
-            XamlSolutionProvider solutionProvider)
-            : base(languageServerProtocol, workspace, listenerProvider, solutionProvider, diagnosticsClientName: null)
+            ILspWorkspaceRegistrationService lspWorkspaceRegistrationService)
+            : base(languageServerProtocol, workspace, diagnosticService, listenerProvider, lspWorkspaceRegistrationService, diagnosticsClientName: null)
         {
         }
 
@@ -50,8 +52,10 @@ namespace Microsoft.VisualStudio.LanguageServices.Xaml
                 OnAutoInsertProvider = new DocumentOnAutoInsertOptions { TriggerCharacters = new[] { "=", "/", ">" } },
                 TextDocumentSync = new TextDocumentSyncOptions
                 {
-                    Change = TextDocumentSyncKind.None
+                    Change = TextDocumentSyncKind.None,
+                    OpenClose = false
                 },
+                SupportsDiagnosticRequests = true,
             };
     }
 }

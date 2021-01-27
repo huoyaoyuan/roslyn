@@ -13,6 +13,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Roslyn.Utilities;
 
+#pragma warning disable CS0618 // Type or member is obsolete - this should become error once we provide infra for migrating to ISB (https://github.com/dotnet/roslyn/issues/44326)
+
 namespace Microsoft.CodeAnalysis.Remote
 {
     /// <summary>
@@ -90,7 +92,7 @@ namespace Microsoft.CodeAnalysis.Remote
         {
             var workspace = GetWorkspace();
             var assetProvider = workspace.CreateAssetProvider(solutionInfo, WorkspaceManager.SolutionAssetCache, WorkspaceManager.GetAssetSource());
-            return workspace.GetSolutionAsync(assetProvider, solutionInfo.SolutionChecksum, solutionInfo.FromPrimaryBranch, solutionInfo.WorkspaceVersion, cancellationToken);
+            return workspace.GetSolutionAsync(assetProvider, solutionInfo.SolutionChecksum, solutionInfo.FromPrimaryBranch, solutionInfo.WorkspaceVersion, cancellationToken).AsTask();
         }
 
         internal Task<Solution> GetSolutionImplAsync(JObject solutionInfo, CancellationToken cancellationToken)
