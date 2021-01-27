@@ -4856,13 +4856,15 @@ namespace Microsoft.CodeAnalysis.Operations
     }
     internal sealed partial class AwaitOperation : Operation, IAwaitOperation
     {
-        internal AwaitOperation(IOperation operation, SemanticModel? semanticModel, SyntaxNode syntax, ITypeSymbol? type, bool isImplicit)
+        internal AwaitOperation(IOperation operation, bool isConditional, SemanticModel? semanticModel, SyntaxNode syntax, ITypeSymbol? type, bool isImplicit)
             : base(semanticModel, syntax, isImplicit)
         {
             Operation = SetParentOperation(operation, this);
+            IsConditional = isConditional;
             Type = type;
         }
         public IOperation Operation { get; }
+        public bool IsConditional { get; }
         protected override IOperation GetCurrent(int slot, int index)
             => slot switch
             {
@@ -7811,7 +7813,7 @@ namespace Microsoft.CodeAnalysis.Operations
         public override IOperation VisitAwait(IAwaitOperation operation, object? argument)
         {
             var internalOperation = (AwaitOperation)operation;
-            return new AwaitOperation(Visit(internalOperation.Operation), internalOperation.OwningSemanticModel, internalOperation.Syntax, internalOperation.Type, internalOperation.IsImplicit);
+            return new AwaitOperation(Visit(internalOperation.Operation), internalOperation.IsConditional, internalOperation.OwningSemanticModel, internalOperation.Syntax, internalOperation.Type, internalOperation.IsImplicit);
         }
         public override IOperation VisitSimpleAssignment(ISimpleAssignmentOperation operation, object? argument)
         {
